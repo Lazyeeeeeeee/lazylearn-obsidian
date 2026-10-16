@@ -1,0 +1,15 @@
+# 构建产物：npm run build 生成，跟着 vault 走、不入库。
+main.js
+main.js.map
+
+# Local configuration and credentials
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+*.pem
+*.key
+.DS_Store

@@ -1,0 +1,270 @@
+/*
+LazyLearn 侧栏样式。只用 Obsidian 的主题变量，不写死颜色：
+亮/暗主题、用户自定义主题都跟着走。
+*/
+
+.lazylearn-view {
+  padding: 0;
+}
+
+.lazylearn-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  padding: 12px;
+  overflow-y: auto;
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+}
+
+.lazylearn-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.lazylearn-title {
+  font-size: var(--font-ui-medium);
+  font-weight: 600;
+}
+
+.lazylearn-subtitle {
+  color: var(--text-muted);
+}
+
+.lazylearn-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background-color: var(--background-secondary);
+}
+
+.lazylearn-section.lazylearn-grow {
+  flex: 1 1 auto;
+}
+
+.lazylearn-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lazylearn-label {
+  min-width: 4em;
+  color: var(--text-muted);
+}
+
+.lazylearn-value {
+  flex: 1 1 auto;
+  word-break: break-word;
+}
+
+.lazylearn-muted {
+  color: var(--text-faint);
+}
+
+.lazylearn-break {
+  word-break: break-all;
+}
+
+.lazylearn-hint,
+.lazylearn-notice {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.lazylearn-notice {
+  padding: 8px 10px;
+  border-left: 3px solid var(--text-warning);
+  border-radius: var(--radius-s);
+  background-color: var(--background-secondary-alt);
+  color: var(--text-normal);
+}
+
+.lazylearn-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.lazylearn-button,
+.lazylearn-icon-button {
+  cursor: pointer;
+}
+
+.lazylearn-button:disabled,
+.lazylearn-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.lazylearn-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lazylearn-card {
+  padding: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background-color: var(--background-primary);
+}
+
+.lazylearn-card-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.lazylearn-tag {
+  padding: 1px 6px;
+  border-radius: var(--radius-s);
+  background-color: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.lazylearn-stem > :first-child {
+  margin-top: 0;
+}
+
+.lazylearn-stem > :last-child {
+  margin-bottom: 0;
+}
+
+.lazylearn-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.lazylearn-options > li {
+  display: flex;
+  gap: 6px;
+}
+
+.lazylearn-option-key {
+  color: var(--text-muted);
+}
+
+.lazylearn-option-text > :first-child {
+  margin-top: 0;
+}
+
+.lazylearn-option-text > :last-child {
+  margin-bottom: 0;
+}
+
+.lazylearn-settings-message {
+  color: var(--text-muted);
+}
+
+.lazylearn-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  background-color: transparent;
+  color: var(--text-normal);
+  font: inherit;
+  text-align: left;
+}
+
+button.lazylearn-option {
+  cursor: pointer;
+}
+
+button.lazylearn-option:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.lazylearn-option.is-picked {
+  border-color: var(--interactive-accent);
+  background-color: var(--background-modifier-hover);
+}
+
+.lazylearn-option.is-correct {
+  border-color: var(--color-green);
+}
+
+.lazylearn-option.is-wrong {
+  border-color: var(--color-red);
+}
+
+.lazylearn-option.is-missed {
+  border-color: var(--color-yellow);
+}
+
+.lazylearn-verdict-mark {
+  margin-left: auto;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.lazylearn-option.is-correct .lazylearn-verdict-mark {
+  color: var(--color-green);
+}
+
+.lazylearn-option.is-wrong .lazylearn-verdict-mark {
+  color: var(--color-red);
+}
+
+.lazylearn-option.is-missed .lazylearn-verdict-mark {
+  color: var(--color-yellow);
+}
+
+.lazylearn-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lazylearn-tag.is-right {
+  color: var(--color-green);
+}
+
+.lazylearn-tag.is-wrong {
+  color: var(--color-red);
+}
+
+.lazylearn-card-error {
+  margin: 6px 0 0;
+  color: var(--text-error);
+}
+
+.lazylearn-answer {
+  margin: 8px 0 0;
+  color: var(--text-normal);
+}
+
+.lazylearn-reveal {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.lazylearn-analysis > :first-child {
+  margin-top: 4px;
+}
+
+.lazylearn-analysis > :last-child {
+  margin-bottom: 0;
+}

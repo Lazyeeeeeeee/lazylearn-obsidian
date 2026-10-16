@@ -1,0 +1,37 @@
+{
+  "name": "lazylearn-obsidian",
+  "private": true,
+  "license": "UNLICENSED",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "dev": "node esbuild.config.mjs --watch",
+    "build": "tsc --noEmit && node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "smoke": "node src/smoke.ts"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "^1.11.4",
+    "typescript": "~5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lazyeeeeeeee/lazylearn-obsidian.git"
+  },
+  "homepage": "https://github.com/Lazyeeeeeeee/lazylearn-obsidian#readme",
+  "bugs": {
+    "url": "https://github.com/Lazyeeeeeeee/lazylearn-obsidian/issues"
+  }
+}
