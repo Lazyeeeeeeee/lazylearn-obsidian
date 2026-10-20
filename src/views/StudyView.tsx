@@ -23,6 +23,7 @@ export interface StudyViewActions {
   openSettings: () => void;
   refresh: () => void;
   loadMore: () => void;
+  practiceGroup: () => void;
   toggleOption: (card: QuestionCard, key: string) => void;
   submitAnswer: (card: QuestionCard) => void;
   revealAnswer: (cardId: string) => void;
@@ -277,6 +278,10 @@ function Panel({ controller, app, actions }: PanelProps) {
           </button>
           <button className="lazylearn-button" onClick={actions.refresh} disabled={!signedIn}>
             重新取题
+          </button>
+          <button className="lazylearn-button" onClick={actions.practiceGroup}
+            disabled={!signedIn || snapshot.binding === null || snapshot.loadingMore}>
+            按薄弱点换 6 题
           </button>
         </div>
       </section>

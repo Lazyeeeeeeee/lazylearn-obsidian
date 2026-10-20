@@ -219,6 +219,11 @@ export default class LazyLearnPlugin extends Plugin {
     });
 
     this.addSettingTab(new LazylearnSettingTab(this.app, this));
+    this.addCommand({
+      id: "personalized-practice-group",
+      name: "按薄弱点换 6 题",
+      callback: () => { void this.controller.loadPracticeGroup(); },
+    });
 
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => {
@@ -272,6 +277,7 @@ export default class LazyLearnPlugin extends Plugin {
 
   #viewActions(): StudyViewActions {
     return {
+      practiceGroup: () => { void this.controller.loadPracticeGroup(); },
       bindTopic: () => {
         void this.pickTopic();
       },

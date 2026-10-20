@@ -1,7 +1,7 @@
 {
   "id": "lazylearn",
   "name": "LazyLearn",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "minAppVersion": "1.11.4",
   "description": "把笔记的知识点绑到懒学题库：就地练题、错题归档回笔记。",
   "author": "LazyLearn",

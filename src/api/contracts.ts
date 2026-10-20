@@ -38,6 +38,20 @@ export interface QuestionPage {
   nextCursor: string | null;
 }
 
+export interface PracticeGroup {
+  questionIds: string[];
+  sessionId: string;
+}
+
+export function parsePracticeGroup(value: unknown): PracticeGroup {
+  const source = record(value, "个性化题组");
+  const ids = source["questionIds"];
+  if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string" || id.trim() === "")) {
+    throw new ContractError("个性化题组.questionIds 应是非空字符串数组");
+  }
+  return { questionIds: [...new Set(ids as string[])], sessionId: text(source, "sessionId", "个性化题组") };
+}
+
 export interface TaxonomyNode {
   id: string;
   parentId: string | null;

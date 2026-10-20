@@ -1,5 +1,6 @@
 import {
   parseAccount,
+  parsePracticeGroup,
   parseErrorPage,
   parseNote,
   parseNoteList,
@@ -46,6 +47,14 @@ export class ApiError extends Error {
 export interface TaxonomyQuery {
   subject: string;
   examScope?: string | null;
+}
+
+export interface PracticeGroupQuery {
+  requestId: string;
+  subject: string;
+  examScope: string;
+  chapterIds: readonly string[];
+  limit: number;
 }
 
 export interface QuestionQuery {
@@ -210,6 +219,26 @@ export class LazylearnClient {
 
   async question(id: string): Promise<QuestionCard> {
     return parseQuestionCard(await this.#request("GET", `/api/questions/${encodeURIComponent(id)}`));
+  }
+
+  async practiceGroup(input: PracticeGroupQuery): Promise<import("./contracts.ts").PracticeGroup> {
+    return parsePracticeGroup(await this.#request("POST", "/api/questions/practice-group", { body: input }));
+  }
+
+  /** 批量题面上限 100；按选题顺序返回，不依赖仓储返回顺序。 */
+  async questionsBatch(ids: readonly string[]): Promise<QuestionCard[]> {
+    const unique = [...new Set(ids)];
+    const cards = new Map<string, QuestionCard>();
+    for (let offset = 0; offset < unique.length; offset += 100) {
+      const page = parseQuestionPage(await this.#request("POST", "/api/questions/batch", {
+        body: { ids: unique.slice(offset, offset + 100) },
+      }));
+      for (const card of page.items) cards.set(card.id, card);
+    }
+    return unique.flatMap((id) => {
+      const card = cards.get(id);
+      return card === undefined ? [] : [card];
+    });
   }
 
   /**

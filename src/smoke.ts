@@ -7,7 +7,7 @@
  */
 
 import { ApiError, LazylearnClient } from "./api/client.ts";
-import { formatAnswer, pickUsableChoices, parseRevealPayload, parseSubmitResult } from "./api/contracts.ts";
+import { ContractError, formatAnswer, pickUsableChoices, parsePracticeGroup, parseRevealPayload, parseSubmitResult } from "./api/contracts.ts";
 import type { QuestionCard, QuestionPage } from "./api/contracts.ts";
 import type { HttpRequest, HttpResponse, HttpTransport } from "./api/transport.ts";
 import { clearToken, readToken, saveToken, sessionSecretId } from "./auth/session.ts";
@@ -160,6 +160,38 @@ check("请求带上 taxonomyId 与 limit", (listing.requests[0]?.url ?? "").incl
 check("请求带 Bearer", listing.requests[0]?.headers["Authorization"] === "Bearer tok-1");
 equal("只留可自动判分的选择题", pickUsableChoices(page.items).map((item) => item.id), ["q1", "q2"]);
 equal("题型中文名", [kindLabel("single_choice"), kindLabel("multiple_choice"), kindLabel("solve")], ["单选", "多选", "解答"]);
+
+console.log("新版个性化题组");
+const groupTransport = new FakeTransport([
+  { status: 200, body: JSON.stringify({ questionIds: ["q2", "q1", "q2"], sessionId: "group-1" }) },
+  { status: 200, body: JSON.stringify({ items: fixtureCards }) },
+]);
+const groupClient = new LazylearnClient(groupTransport, "https://ll.test", "tok-1");
+const groupInput = { requestId: "group-1", subject: "math", examScope: "math1", chapterIds: ["t1", "t2"], limit: 6 };
+const group = await groupClient.practiceGroup(groupInput);
+equal("题组 ID 去重并保留顺序", group.questionIds, ["q2", "q1"]);
+equal("新版题组请求路径", groupTransport.requests[0]?.url, "https://ll.test/api/questions/practice-group");
+equal("题组条件和重试 ID 原样传递", JSON.parse(groupTransport.requests[0]?.body ?? "{}"), groupInput);
+equal("批量读取按题组顺序过滤响应", (await groupClient.questionsBatch(group.questionIds)).map((item) => item.id), ["q2", "q1"]);
+equal("批量读取路径", groupTransport.requests[1]?.url, "https://ll.test/api/questions/batch");
+equal("空题组无需读取题面", await groupClient.questionsBatch([]), []);
+equal("空题组不发请求", groupTransport.requests.length, 2);
+equal("服务端空题组合法", parsePracticeGroup({ questionIds: [], sessionId: "empty" }).questionIds, []);
+for (const badIds of [null, [""], [3]]) {
+  try {
+    parsePracticeGroup({ questionIds: badIds, sessionId: "bad" });
+    check("非法题组应当拒绝", false);
+  } catch (error) {
+    check("非法题组明确报契约错误", error instanceof ContractError);
+  }
+}
+const batchIds = Array.from({ length: 101 }, (_, index) => `batch-${index}`);
+const batchTransport = new FakeTransport([
+  { status: 200, body: JSON.stringify({ items: [] }) },
+  { status: 200, body: JSON.stringify({ items: [] }) },
+]);
+await new LazylearnClient(batchTransport, "https://ll.test", "tok").questionsBatch([...batchIds, batchIds[0]!]);
+equal("批量上限 100 且去重", batchTransport.requests.map((request) => JSON.parse(request.body ?? "{}").ids.length), [100, 1]);
 
 console.log("错误分诊");
 const unauthorized = new FakeTransport([{ status: 401, body: JSON.stringify({ detail: "请先登录，或登录已过期" }) }]);

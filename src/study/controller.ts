@@ -9,7 +9,8 @@
 
 import type { App, TFile } from "obsidian";
 
-import { ApiError, LazylearnClient } from "../api/client.ts";
+import { ApiError, LazylearnClient, type PracticeGroupQuery } from "../api/client.ts";
+import { newUuid } from "../lib/ids.ts";
 import type { Account, TaxonomyNode } from "../api/contracts.ts";
 import type { HttpTransport } from "../api/transport.ts";
 import { clearToken, readToken, saveToken } from "../auth/session.ts";
@@ -110,6 +111,7 @@ export class StudyController {
   #snapshot: StudySnapshot;
   #listeners: Set<(snapshot: StudySnapshot) => void> = new Set();
   #generation = 0;
+  #practiceRequest: { generation: number; input: PracticeGroupQuery } | null = null;
   #taxonomyKey: string | null = null;
   #taxonomy: TaxonomyNode[] = [];
   /** 导入循环的开关。false = 用户按了取消，或这一轮已经收尾。 */
@@ -307,6 +309,52 @@ export class StudyController {
     await this.#fetchPage(generation, true);
   }
 
+  /** 题组请求失败保留 ID；再次点击重试同一组，成功后才换新 ID。 */
+  async loadPracticeGroup(): Promise<void> {
+    if (this.#snapshot.loadingMore) return;
+    const binding = this.#snapshot.binding;
+    const token = this.#token();
+    if (binding === null || token === null || this.#snapshot.account === null) return;
+    const generation = this.#generation;
+    if (this.#practiceRequest?.generation !== generation) {
+      this.#practiceRequest = {
+        generation,
+        input: {
+          requestId: newUuid(), subject: binding.subject, examScope: binding.examScope,
+          chapterIds: [...binding.taxonomyIds], limit: QUESTIONS_PER_ROUND,
+        },
+      };
+    }
+    const input = this.#practiceRequest.input;
+    this.#emit({ loadingMore: true, message: null });
+    try {
+      const client = this.#client(token);
+      const group = await client.practiceGroup(input);
+      if (generation !== this.#generation) return;
+      const cards = await client.questionsBatch(group.questionIds);
+      if (generation !== this.#generation) return;
+      // 个性化选题没有分页游标；下一组由用户再次点击生成。
+      const round = mergePage(startRound(["practice-group"]), "practice-group", { items: cards, nextCursor: null });
+      ++this.#generation;
+      this.#practiceRequest = null;
+      this.#emit({
+        round, answers: {}, loadingMore: false, phase: "ready",
+        message: `已按练习历史选取 ${group.questionIds.length} 题，可在侧栏作答 ${round.cards.length} 道选择题。`,
+      });
+    } catch (error) {
+      if (generation !== this.#generation) return;
+      if (error instanceof ApiError && error.isUnauthorized) {
+        clearToken(this.#hooks.secrets, this.#settings().baseUrl);
+        this.#emit({ phase: "signed-out", account: null, loadingMore: false, message: "登录已过期，请重新登录。" });
+        return;
+      }
+      const message = error instanceof ApiError && (error.status === 404 || error.status === 405)
+        ? "当前服务端尚不支持个性化题组，请使用重新取题或升级主项目。"
+        : `个性化取题失败，可点击重试：${errorMessage(error)}`;
+      this.#emit({ loadingMore: false, message });
+    }
+  }
+
   /**
    * 拉一页。多个绑定知识点时按顺序逐个请求：每个知识点各记各的 cursor，
    * 攒够 QUESTIONS_PER_ROUND 就停手（配额按「不同的题」算，多拉没意义）。
@@ -443,6 +491,7 @@ export class StudyController {
    * 多按一次就真的多一笔 Attempt（多算一次错、多回流一次复习）。
    */
   async submitAnswer(card: QuestionCard): Promise<void> {
+    const generation = this.#generation;
     const current = this.answerOf(card.id);
     if (!Answering.canSubmit(current)) return;
     const token = this.#token();
@@ -459,8 +508,10 @@ export class StudyController {
         submitting.selected,
         submitting.requestId ?? undefined,
       );
+      if (generation !== this.#generation) return;
       this.#setAnswer(card.id, Answering.applySubmit(this.answerOf(card.id), result));
     } catch (error) {
+      if (generation !== this.#generation) return;
       if (error instanceof ApiError && error.isUnauthorized) {
         clearToken(this.#hooks.secrets, this.#settings().baseUrl);
         this.#emit({ phase: "signed-out", account: null, message: "登录已过期，请重新登录。" });
@@ -472,12 +523,16 @@ export class StudyController {
 
   /** 揭晓答案与解析。只有交过卷才给点（服务端也是这么判的）。 */
   async revealAnswer(cardId: string): Promise<void> {
+    const generation = this.#generation;
     if (this.answerOf(cardId).stage !== "submitted") return;
     const token = this.#token();
     if (token === null) return;
     try {
-      this.#setAnswer(cardId, Answering.applyReveal(this.answerOf(cardId), await this.#client(token).reveal(cardId)));
+      const reveal = await this.#client(token).reveal(cardId);
+      if (generation !== this.#generation) return;
+      this.#setAnswer(cardId, Answering.applyReveal(this.answerOf(cardId), reveal));
     } catch (error) {
+      if (generation !== this.#generation) return;
       // 揭晓失败不该把「已经交卷」这件事抹掉：只挂一句话。
       this.#setAnswer(cardId, Answering.noteError(this.answerOf(cardId), errorMessage(error)));
     }
