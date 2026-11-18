@@ -232,12 +232,42 @@ export function parseSubmitResult(value: unknown): SubmitResult {
   };
 }
 
-/** 揭晓（`GET /api/questions/{id}/reveal`）：只抄界面要画的四段。 */
+/** 一道题的多解法（服务端只给数学题存 2–3 种）。 */
+export interface QuestionSolution {
+  id: string;
+  /** standard / technique / exam；只用于显示，不参与判分。 */
+  kind: string;
+  title: string;
+  content: string;
+}
+
+/** 揭晓（`GET /api/questions/{id}/reveal`）：只抄界面要画的几段。 */
 export interface RevealPayload {
   answer: unknown;
   analysis: string | null;
   aiAnalysis: string | null;
   trick: string | null;
+  /** 多解法（主项目 v1 起）：没有就是空数组。 */
+  solutions: QuestionSolution[];
+}
+
+/** 解析多解法。字段不齐的条目跳过——少画一段解法，不能把整次揭晓判坏。 */
+function parseSolutions(value: unknown): QuestionSolution[] {
+  if (!Array.isArray(value)) return [];
+  const solutions: QuestionSolution[] = [];
+  for (const raw of value) {
+    if (!isRecord(raw)) continue;
+    const title = typeof raw["title"] === "string" ? raw["title"].trim() : "";
+    const content = typeof raw["content"] === "string" ? raw["content"].trim() : "";
+    if (title === "" || content === "") continue;
+    solutions.push({
+      id: typeof raw["id"] === "string" ? raw["id"] : "",
+      kind: typeof raw["kind"] === "string" ? raw["kind"] : "",
+      title,
+      content,
+    });
+  }
+  return solutions;
 }
 
 export function parseRevealPayload(value: unknown): RevealPayload {
@@ -246,7 +276,13 @@ export function parseRevealPayload(value: unknown): RevealPayload {
     const raw = source[key];
     return typeof raw === "string" && raw.trim() !== "" ? raw : null;
   };
-  return { answer: source["answer"], analysis: nullable("analysis"), aiAnalysis: nullable("aiAnalysis"), trick: nullable("trick") };
+  return {
+    answer: source["answer"],
+    analysis: nullable("analysis"),
+    aiAnalysis: nullable("aiAnalysis"),
+    trick: nullable("trick"),
+    solutions: parseSolutions(source["solutions"]),
+  };
 }
 
 /**

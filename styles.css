@@ -261,6 +261,29 @@ button.lazylearn-option:hover {
   border-top: 1px solid var(--background-modifier-border);
 }
 
+.lazylearn-solutions {
+  margin-top: 10px;
+}
+
+.lazylearn-solutions-title {
+  margin: 0 0 4px;
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.lazylearn-solution {
+  margin: 8px 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--background-modifier-border);
+}
+
+.lazylearn-solution-title {
+  margin: 0 0 2px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
 .lazylearn-analysis > :first-child {
   margin-top: 4px;
 }

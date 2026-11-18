@@ -74,6 +74,13 @@ export interface ErrorPageQuery {
 
 type QueryValue = string | number | boolean | null | undefined;
 
+/**
+ * 端标识。主项目按 `X-Client` 给登录会话分桶（每端各留自己的会话，互不挤掉），
+ * 只认 web / mp / app / ios / android / mcp；Obsidian 属于桌面客户端，报 `app`。
+ * 不报的话会落进 web 桶，和浏览器登录互相踢下线。
+ */
+export const CLIENT_TAG = "app";
+
 /** 拼查询串：空值不出现，避免服务端把 `subject=` 当成一个空学科。 */
 export function buildUrl(baseUrl: string, path: string, query: Record<string, QueryValue> = {}): string {
   const parts: string[] = [];
@@ -137,7 +144,10 @@ export class LazylearnClient {
     path: string,
     options: { query?: Record<string, QueryValue>; body?: unknown; accept?: string } = {},
   ): Promise<import("./transport.ts").HttpResponse> {
-    const headers: Record<string, string> = { Accept: options.accept ?? "application/json" };
+    const headers: Record<string, string> = {
+      Accept: options.accept ?? "application/json",
+      "X-Client": CLIENT_TAG,
+    };
     if (this.token !== null && this.token !== "") headers["Authorization"] = `Bearer ${this.token}`;
     let body: string | null = null;
     if (options.body !== undefined) {
@@ -222,7 +232,16 @@ export class LazylearnClient {
   }
 
   async practiceGroup(input: PracticeGroupQuery): Promise<import("./contracts.ts").PracticeGroup> {
-    return parsePracticeGroup(await this.#request("POST", "/api/questions/practice-group", { body: input }));
+    // 空卷种 = 不分卷（政治/其他专业课）。必须发 null：发空串会被服务端当成
+    // 「examScopes 里含空串」的筛选条件，整科题一道都取不到。
+    const body = {
+      requestId: input.requestId,
+      subject: input.subject,
+      examScope: input.examScope === "" ? null : input.examScope,
+      chapterIds: [...input.chapterIds],
+      limit: input.limit,
+    };
+    return parsePracticeGroup(await this.#request("POST", "/api/questions/practice-group", { body }));
   }
 
   /** 批量题面上限 100；按选题顺序返回，不依赖仓储返回顺序。 */

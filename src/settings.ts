@@ -14,8 +14,11 @@ export interface SubjectChoice {
 }
 
 /**
- * 首版只开放数学与 408：两者都是选择题为主的公共题库，练题闭环能整条走通。
- * 英语的共享篇章与作文批改要另一套界面，等首版跑通再加。
+ * 侧栏只做单选/多选，所以这里开放的是「题库里有可自动判分选择题」的科目。
+ *
+ * 数学与 408 是公共题库；政治是统考选择题库，没有卷种之分（`examScope` 留空，
+ * 请求里按「不限」处理）；「其他专业课」是用户自己导入的题库，章节也来自本人。
+ * 英语的阅读共用篇章与作文批改要另一套界面，暂不开放。
  */
 export const SUBJECTS: readonly SubjectChoice[] = [
   {
@@ -38,7 +41,22 @@ export const SUBJECTS: readonly SubjectChoice[] = [
       { id: "cn", label: "计算机网络" },
     ],
   },
+  {
+    id: "politics",
+    label: "政治",
+    scopes: [{ id: "", label: "不分卷" }],
+  },
+  {
+    id: "other",
+    label: "其他专业课",
+    scopes: [{ id: "", label: "不分卷" }],
+  },
 ];
+
+/** 卷种 id 为空表示这科不分卷：请求里不带 `examScope`，不是「选了一个空卷种」。 */
+export function hasExamScopes(subject: string): boolean {
+  return scopesFor(subject).some((scope) => scope.id !== "");
+}
 
 export interface LazylearnSettings {
   /** 服务地址，规范化后不带尾斜杠，例如 https://lazylearn.example.com */

@@ -94,6 +94,13 @@ export function renderManaged(
   const reference = reveal === null ? "" : formatAnswer(reveal.answer).trim();
   if (reference !== "") parts.push(`**正确答案**：${reference}`);
   if (reveal?.trick) parts.push(`**技巧**：${rewriteMediaRefs(reveal.trick.trim(), mediaRewrite)}`);
+  // 数学一题多解：每段自带标题（常规解法 / 技巧解法 / 考场速算）。
+  if (reveal !== null && reveal.solutions.length > 0) {
+    parts.push("**多解法**");
+    for (const solution of reveal.solutions) {
+      parts.push(`**${solution.title.trim()}**\n\n${rewriteMediaRefs(solution.content.trim(), mediaRewrite)}`);
+    }
+  }
   if (reveal?.analysis) parts.push(rewriteMediaRefs(reveal.analysis.trim(), mediaRewrite));
   if (reveal?.aiAnalysis) parts.push(rewriteMediaRefs(reveal.aiAnalysis.trim(), mediaRewrite));
   if (reveal === null) {

@@ -6,13 +6,13 @@
  * 同一批题会不会重复、换服务器会不会串会话。真机联调不在这里。
  */
 
-import { ApiError, LazylearnClient } from "./api/client.ts";
+import { ApiError, CLIENT_TAG, LazylearnClient } from "./api/client.ts";
 import { ContractError, formatAnswer, pickUsableChoices, parsePracticeGroup, parseRevealPayload, parseSubmitResult } from "./api/contracts.ts";
 import type { QuestionCard, QuestionPage } from "./api/contracts.ts";
 import type { HttpRequest, HttpResponse, HttpTransport } from "./api/transport.ts";
 import { clearToken, readToken, saveToken, sessionSecretId } from "./auth/session.ts";
 import type { SecretStore } from "./auth/session.ts";
-import { DEFAULT_SETTINGS, normalizeBaseUrl, parseSettings, scopeFor } from "./settings.ts";
+import { DEFAULT_SETTINGS, hasExamScopes, normalizeBaseUrl, parseSettings, scopeFor, scopesFor } from "./settings.ts";
 import {
   createBinding,
   readBinding,
@@ -158,6 +158,7 @@ equal("分页收下全部 items", page.items.length, 4);
 equal("nextCursor 透传", page.nextCursor, "c2");
 check("请求带上 taxonomyId 与 limit", (listing.requests[0]?.url ?? "").includes("taxonomyId=t1&subject=math&examScope=math1&limit=6"), listing.requests[0]?.url);
 check("请求带 Bearer", listing.requests[0]?.headers["Authorization"] === "Bearer tok-1");
+equal("请求带端标识（会话分桶用）", listing.requests[0]?.headers["X-Client"], CLIENT_TAG);
 equal("只留可自动判分的选择题", pickUsableChoices(page.items).map((item) => item.id), ["q1", "q2"]);
 equal("题型中文名", [kindLabel("single_choice"), kindLabel("multiple_choice"), kindLabel("solve")], ["单选", "多选", "解答"]);
 
@@ -177,6 +178,14 @@ equal("批量读取路径", groupTransport.requests[1]?.url, "https://ll.test/ap
 equal("空题组无需读取题面", await groupClient.questionsBatch([]), []);
 equal("空题组不发请求", groupTransport.requests.length, 2);
 equal("服务端空题组合法", parsePracticeGroup({ questionIds: [], sessionId: "empty" }).questionIds, []);
+
+const noScopeTransport = new FakeTransport([
+  { status: 200, body: JSON.stringify({ questionIds: [], sessionId: "politics-1" }) },
+]);
+await new LazylearnClient(noScopeTransport, "https://ll.test", "tok-1").practiceGroup({
+  requestId: "politics-1", subject: "politics", examScope: "", chapterIds: ["p1"], limit: 6,
+});
+equal("不分卷的题组把空卷种发成 null", JSON.parse(noScopeTransport.requests[0]?.body ?? "{}").examScope, null);
 for (const badIds of [null, [""], [3]]) {
   try {
     parsePracticeGroup({ questionIds: badIds, sessionId: "bad" });
@@ -254,6 +263,15 @@ check(
   "没绑知识点就不算绑定",
   readBinding({ lazylearn: { schema: 1, subject: "math", examScope: "math1", taxonomyIds: [] } }) === null,
 );
+equal(
+  "不分卷的绑定（空 examScope）读得回来",
+  readBinding({ lazylearn: { schema: 1, subject: "politics", examScope: "", taxonomyIds: ["p1"] } })?.subject,
+  "politics",
+);
+check(
+  "分卷科目不接受空 examScope",
+  readBinding({ lazylearn: { schema: 1, subject: "math", examScope: "", taxonomyIds: ["t1"] } }) === null,
+);
 check("frontmatter 里没有这一项就没有绑定", readBinding({ tags: ["x"] }) === null);
 
 console.log("一轮取题");
@@ -293,6 +311,14 @@ equal("缺协议补 https", normalizeBaseUrl("lazylearn.test/"), "https://lazyle
 equal("多余的斜杠去掉", normalizeBaseUrl("http://127.0.0.1:8000//"), "http://127.0.0.1:8000");
 equal("科目换了卷种跟着换", scopeFor("cs408", "math1"), "cs408");
 equal("卷种合法就不动", scopeFor("math", "math2"), "math2");
+equal("政治不分卷", [scopeFor("politics", "math1"), scopesFor("politics").length, hasExamScopes("politics")].join("|"), "|1|false");
+equal("数学有卷种", hasExamScopes("math"), true);
+equal(
+  "政治的空卷种能读回来",
+  [parseSettings({ baseUrl: "ll.test", subject: "politics", examScope: "", archiveRoot: "LazyLearn" }).subject,
+    parseSettings({ baseUrl: "ll.test", subject: "politics", examScope: "", archiveRoot: "LazyLearn" }).examScope].join("|"),
+  "politics|",
+);
 const parsed = parseSettings({
   baseUrl: "lazylearn.test",
   subject: "cs408",
@@ -336,6 +362,19 @@ check("失败后还能再交", canSubmit(failed));
 
 // 正确答案是 A、C，而他选的是 A、B：三种记号都该出现。
 const reveal = parseRevealPayload({ answer: ["A", "C"], analysis: "解析正文", trick: null, aiAnalysis: null });
+equal("没有多解法就是空数组", reveal.solutions.length, 0);
+const multiReveal = parseRevealPayload({
+  answer: ["A"],
+  analysis: null,
+  trick: null,
+  aiAnalysis: null,
+  solutions: [
+    { id: "s1", kind: "standard", title: "常规解法", content: "先求导。" },
+    { id: "s2", kind: "technique", title: "技巧解法", content: "换元。" },
+    { id: "s3", kind: "exam", title: "", content: "缺标题" },
+  ],
+});
+equal("多解法只留字段齐的", multiReveal.solutions.map((item) => `${item.title}:${item.content}`), ["常规解法:先求导。", "技巧解法:换元。"]);
 const misgraded = applySubmit(
   beginSubmit(toggleOption(toggleOption(startAnswer(), "A", true), "B", true)),
   result,
@@ -384,13 +423,23 @@ const archivedReveal = parseRevealPayload({
   analysis: "因为 ![图](/api/media/seed/a.png) 所以选乙",
   trick: "看单位",
   aiAnalysis: null,
+  solutions: [
+    { id: "s1", kind: "standard", title: "常规解法", content: "先代入 ![图](/api/media/seed/b.png)。" },
+    { id: "s2", kind: "technique", title: "技巧解法", content: "看边界。" },
+  ],
 });
-const mediaMapping = new Map([["/api/media/seed/a.png", "./q-77/assets/a.png"]]);
+const mediaMapping = new Map([
+  ["/api/media/seed/a.png", "./q-77/assets/a.png"],
+  ["/api/media/seed/b.png", "./q-77/assets/b.png"],
+]);
 const managed = renderManaged(archivedCard, archivedReveal, mediaMapping);
 check("托管块带上题干", managed.includes("题干见图"), managed);
 check("托管块换算媒体引用", managed.includes("](./q-77/assets/a.png)"), managed);
 check("托管块带上了正确答案", managed.includes("**正确答案**：B"), managed);
 check("托管块带上了解析与技巧", managed.includes("看单位") && managed.includes("所以选乙"), managed);
+check("托管块带上多解法并换算其中的图", managed.includes("**多解法**") && managed.includes("**常规解法**") && managed.includes("](./q-77/assets/b.png)"), managed);
+// 解法里的图也要进下载清单。
+equal("多解法里的媒体引用被收进清单", mediaRefsIn(...archivedReveal.solutions.map((item) => item.content)).map((ref) => ref.objectKey), ["seed/b.png"]);
 const withoutReveal = renderManaged(archivedCard, null);
 check("取不到解析时留一句话", withoutReveal.includes("解析没取到"), withoutReveal);
 

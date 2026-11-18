@@ -1,7 +1,7 @@
 import { PluginSettingTab, Setting, type App } from "obsidian";
 
 import type LazyLearnPlugin from "./main.ts";
-import { SUBJECTS, normalizeBaseUrl, scopeFor, scopesFor } from "./settings.ts";
+import { SUBJECTS, hasExamScopes, normalizeBaseUrl, scopeFor, scopesFor } from "./settings.ts";
 
 export class LazylearnSettingTab extends PluginSettingTab {
   #plugin: LazyLearnPlugin;
@@ -44,7 +44,7 @@ export class LazylearnSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("科目")
-      .setDesc("首版开放数学与 408 的选择题。已经绑定过的笔记按它自己 frontmatter 里的科目出题，改这里只影响新绑定。")
+      .setDesc("开放数学、408、政治与「其他专业课」的选择题。已经绑定过的笔记按它自己 frontmatter 里的科目出题，改这里只影响新绑定。")
       .addDropdown((dropdown) => {
         for (const subject of SUBJECTS) dropdown.addOption(subject.id, subject.label);
         dropdown.setValue(this.#plugin.settings.subject).onChange((value) => {
@@ -54,14 +54,17 @@ export class LazylearnSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(containerEl).setName("卷种").addDropdown((dropdown) => {
-      for (const scope of scopesFor(this.#plugin.settings.subject)) {
-        dropdown.addOption(scope.id, scope.label);
-      }
-      dropdown.setValue(this.#plugin.settings.examScope).onChange((value) => {
-        void this.#plugin.applyScope(this.#plugin.settings.subject, value).then(() => this.display());
+    // 政治与其他专业课不分卷：`examScope` 留空，请求里不带这个筛选。
+    if (hasExamScopes(this.#plugin.settings.subject)) {
+      new Setting(containerEl).setName("卷种").addDropdown((dropdown) => {
+        for (const scope of scopesFor(this.#plugin.settings.subject)) {
+          dropdown.addOption(scope.id, scope.label);
+        }
+        dropdown.setValue(this.#plugin.settings.examScope).onChange((value) => {
+          void this.#plugin.applyScope(this.#plugin.settings.subject, value).then(() => this.display());
+        });
       });
-    });
+    }
 
     new Setting(containerEl)
       .setName("归档目录")

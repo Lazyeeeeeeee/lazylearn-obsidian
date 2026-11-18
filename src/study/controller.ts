@@ -487,8 +487,8 @@ export class StudyController {
   }
 
   /**
-   * 交一道题。界面在飞行中禁用按钮，这里再挡一道：服务端这条路径还没有幂等键，
-   * 多按一次就真的多一笔 Attempt（多算一次错、多回流一次复习）。
+   * 交一道题。界面在飞行中禁用按钮，这里再挡一道：同一笔不会被重复发出去。
+   * 真正的兜底是 `clientRequestId`——超时后重发会带同一个键，服务端只落一条 Attempt。
    */
   async submitAnswer(card: QuestionCard): Promise<void> {
     const generation = this.#generation;
