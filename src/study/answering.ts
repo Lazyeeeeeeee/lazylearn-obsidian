@@ -3,7 +3,7 @@
  * 「双击只发一次」这两条。
  *
  * 状态迁移：answering → submitting → submitted → revealed。
- * 提交失败回到 answering 并带上 error——**不自动重发**（服务端这条路径还没有幂等键）。
+ * 提交失败回到 answering 并带上 error——**不自动重发**；用户再点提交时沿用同一个幂等键。
  */
 
 import { answerKeys } from "../api/contracts.ts";

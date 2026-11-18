@@ -13,6 +13,8 @@
  * ```
  */
 
+import { hasExamScopes } from "../settings.ts";
+
 export const BINDING_KEY = "lazylearn";
 export const BINDING_SCHEMA = 1;
 
@@ -43,7 +45,9 @@ export function readBinding(frontmatter: unknown): TopicBinding | null {
   const examScope = raw["examScope"];
   const taxonomyIds = nonEmptyStrings(raw["taxonomyIds"]);
   if (typeof subject !== "string" || subject === "") return null;
-  if (typeof examScope !== "string" || examScope === "") return null;
+  // 空串只对不分卷的科目合法（政治、其他专业课）；数学/408 的空卷种是坏绑定。
+  if (typeof examScope !== "string") return null;
+  if (examScope === "" && hasExamScopes(subject)) return null;
   if (taxonomyIds.length === 0) return null;
   const boundAt = raw["boundAt"];
   return {

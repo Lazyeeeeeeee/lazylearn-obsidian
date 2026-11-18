@@ -178,6 +178,22 @@ function Card({ card, app, sourcePath, answer, actions }: CardProps) {
           {answer.reveal?.trick === null || answer.reveal?.trick === undefined ? null : (
             <Markdown app={app} markdown={`**技巧**：${answer.reveal.trick}`} sourcePath={sourcePath} className="lazylearn-analysis" />
           )}
+          {answer.reveal?.solutions.length ? (
+            <div className="lazylearn-solutions">
+              <p className="lazylearn-solutions-title">多解法</p>
+              {answer.reveal.solutions.map((solution) => (
+                <div className="lazylearn-solution" key={solution.id || solution.title}>
+                  <p className="lazylearn-solution-title">{solution.title}</p>
+                  <Markdown
+                    app={app}
+                    markdown={solution.content}
+                    sourcePath={sourcePath}
+                    className="lazylearn-analysis"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
           {answer.reveal?.analysis === null || answer.reveal?.analysis === undefined ? (
             <p className="lazylearn-muted">这道题没有解析。</p>
           ) : (

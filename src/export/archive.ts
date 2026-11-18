@@ -148,6 +148,7 @@ async function fetchAssets(
     card.stem,
     ...card.options.map((option) => option.text),
     reveal?.trick ?? null,
+    ...(reveal?.solutions ?? []).map((solution) => solution.content),
     reveal?.analysis ?? null,
     reveal?.aiAnalysis ?? null,
   );
